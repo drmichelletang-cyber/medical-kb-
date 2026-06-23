@@ -3,6 +3,8 @@ import os, re, json
 _HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(_HERE)   # vault 根目錄 = _tools 的上一層
 OUT  = os.path.join(ROOT, "叮噹長壽知識庫_瀏覽器.html")
+# GitHub Pages 根網址只認 index.html，故同時輸出一份同內容的 index.html
+OUT_INDEX = os.path.join(ROOT, "index.html")
 
 def parse_fm(text):
     fm, body = {}, text
@@ -219,5 +221,7 @@ function open(id){
 buildNav(); renderHub();
 </script></body></html>"""
 
-open(OUT,"w",encoding="utf-8").write(TMPL.replace("__DATA__",data))
-print("HTML OK,", len(notes), "notes")
+html = TMPL.replace("__DATA__",data)
+open(OUT,"w",encoding="utf-8").write(html)
+open(OUT_INDEX,"w",encoding="utf-8").write(html)
+print("HTML OK,", len(notes), "notes (+ index.html)")
