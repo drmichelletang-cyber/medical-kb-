@@ -1,4 +1,95 @@
-<!DOCTYPE html>
+# -*- coding: utf-8 -*-
+"""
+叮噹戰情室 產生器
+讀 戰情室/ 底下的 .md（員工/專案/KPI/會議）→ 重生 戰情室.html（靜態快照）。
+模式與醫學知識庫相同：.md = 真相來源，HTML = 拋棄式衍生視圖。永遠改 .md，不要手改 HTML。
+用法：  python3 戰情室/_tools/產生戰情室.py
+"""
+import os, re, json, datetime
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT  = os.path.dirname(_HERE)            # = 戰情室/ 資料夾
+OUT   = os.path.join(ROOT, "戰情室.html")
+
+def parse_fm(text):
+    """解析 frontmatter（與知識庫同一套：扁平 key:value 與 [list]）。"""
+    fm, body = {}, text
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        if end != -1:
+            block = text[3:end].strip("\n"); body = text[end+4:].lstrip("\n")
+            for line in block.split("\n"):
+                if ":" not in line: continue
+                k, v = line.split(":", 1); k = k.strip(); v = v.strip()
+                if v.startswith("[") and v.endswith("]"):
+                    inner = v[1:-1].strip(); items = []
+                    if inner:
+                        for it in inner.split(","):
+                            it = it.strip().strip('"').strip("'").strip()
+                            if it: items.append(it)
+                    fm[k] = items
+                else:
+                    v = v.strip('"').strip("'")
+                    if v.lower() == "true": fm[k] = True
+                    elif v.lower() == "false": fm[k] = False
+                    elif re.fullmatch(r"-?\d+", v): fm[k] = int(v)
+                    else: fm[k] = v
+    return fm, body
+
+employees, projects, kpis, meetings = [], [], [], []
+SKIP_DIRS = {"_tools", "_範本"}
+for dp, dns, files in os.walk(ROOT):
+    dns[:] = [d for d in dns if d not in SKIP_DIRS]
+    for fn in files:
+        if not fn.endswith(".md"): continue
+        raw = open(os.path.join(dp, fn), encoding="utf-8").read()
+        fm, body = parse_fm(raw)
+        m = re.search(r"^#\s+(.+)$", body, re.M)
+        title = m.group(1).strip() if m else fn[:-3]
+        body_clean = re.sub(r"^#\s+.+$", "", body, count=1, flags=re.M).strip()
+        rec = {"title": title, "fm": fm, "body": body_clean}
+        t = fm.get("type")
+        if   t == "employee": employees.append(rec)
+        elif t == "project":  projects.append(rec)
+        elif t == "kpi":      kpis.append(rec)
+        elif t == "meeting":  meetings.append(rec)
+
+# 整理成前端要的扁平結構
+def emp_out(r):
+    f = r["fm"]
+    return {"id": f.get("emp_id", r["title"]), "name": r["title"], "avatar": f.get("avatar", "🙂"),
+            "role": f.get("role", ""), "kind": f.get("kind", "agent"),
+            "state": f.get("state", "idle"), "doing": f.get("doing", ""),
+            "order": f.get("order", 99)}
+def proj_out(r):
+    f = r["fm"]
+    return {"id": f.get("proj_id", ""), "name": r["title"], "owner": f.get("owner", ""),
+            "collaborators": f.get("collaborators", []), "status": f.get("status", "planned"),
+            "progress": int(f.get("progress", 0)), "priority": f.get("priority", "med"),
+            "start": f.get("start", ""), "due": f.get("due", ""), "kpi": f.get("kpi", []),
+            "body": r["body"]}
+def kpi_out(r):
+    f = r["fm"]
+    return {"id": f.get("kpi_id", ""), "name": r["title"], "scope": f.get("scope", "annual"),
+            "period": str(f.get("period", "")), "current": float(f.get("current", 0)),
+            "target": float(f.get("target", 1)), "unit": f.get("unit", ""), "owner": f.get("owner", "")}
+def meet_out(r):
+    f = r["fm"]
+    return {"id": f.get("meet_id", ""), "title": r["title"], "date": str(f.get("date", "")),
+            "attendees": f.get("attendees", []), "projects": f.get("projects", []),
+            "tag": f.get("tag", ""), "recording": f.get("recording", ""), "body": r["body"]}
+
+employees = sorted([emp_out(r) for r in employees], key=lambda e: e["order"])
+projects  = sorted([proj_out(r) for r in projects], key=lambda p: -p["progress"])
+kpis      = [kpi_out(r) for r in kpis]
+kpis.sort(key=lambda k: (0 if k["scope"] == "annual" else 1, k["name"]))
+meetings  = sorted([meet_out(r) for r in meetings], key=lambda m: m["date"], reverse=True)
+
+gen = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y/%m/%d %H:%M")
+DATA = json.dumps({"employees": employees, "projects": projects, "kpis": kpis,
+                   "meetings": meetings, "generated_at": gen}, ensure_ascii=False)
+
+TMPL = r"""<!DOCTYPE html>
 <html lang="zh-Hant"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>叮噹戰情室 · 一人公司儀錶板</title>
@@ -118,7 +209,7 @@ main{max-width:1280px;margin:0 auto;padding:20px 22px 60px}
 </main>
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
 <script>
-const DATA = {"employees": [{"id": "director", "name": "院長（你）", "avatar": "🧑‍⚕️", "role": "決策・最終拍板", "kind": "human", "state": "idle", "doing": "審書籍核心哲學段落", "order": 1}, {"id": "research", "name": "研究查核員", "avatar": "🔬", "role": "文獻查核・證據分級", "kind": "agent", "state": "working", "doing": "查核 <b>Rayens 2026</b> 帶疱疫苗與失智", "order": 2}, {"id": "editor", "name": "主編", "avatar": "✍️", "role": "內容撰寫・9S 連結", "kind": "agent", "state": "working", "doing": "撰寫 <b>S4 肌力章</b>（厚積薄發）", "order": 3}, {"id": "engineer", "name": "產出工程師", "avatar": "⚙️", "role": "跑產生器・部署上線", "kind": "agent", "state": "working", "doing": "搭建<b>戰情室儀錶板</b>", "order": 4}, {"id": "designer", "name": "品牌設計", "avatar": "🎨", "role": "視覺・Canva 出圖", "kind": "agent", "state": "idle", "doing": "等品牌改版啟動", "order": 5}, {"id": "secretary", "name": "行政祕書", "avatar": "🗂️", "role": "排程・信件・會議", "kind": "agent", "state": "meeting", "doing": "安排下週週會、寄出議程", "order": 6}], "projects": [{"id": "P-04", "name": "帶疱疫苗與失智專題", "owner": "research", "collaborators": ["editor"], "status": "review", "progress": 80, "priority": "high", "start": "2026-06-01", "due": "2026-06-30", "kpi": ["K-topic-year"], "body": "## 目標\n把 Rayens 2026 的關聯整理成一篇可引用的臨床主題，連回 S6 銳智。\n\n## 里程碑\n- [x] 初稿完成\n- [x] 關鍵數字列出\n- [ ] 補全文 DOI、院長定稿\n\n## 風險／卡點\n- 關聯性研究，需標清楚「關聯非因果」的使用眉角。"}, {"id": "P-01", "name": "老年醫學證據庫擴充", "owner": "research", "collaborators": ["editor"], "status": "in_progress", "progress": 65, "priority": "high", "start": "2026-05-01", "due": "2026-07-31", "kpi": ["K-evidence-year"], "body": "## 目標\n把核心證據補到能撐起整套 9S 論述，每篇附查核狀態。\n\n## 里程碑\n- [x] 肌力章證據（AWGS 2025、Lee 2020）\n- [x] 衰弱表型（Fried 2001、Rockwood 2007）\n- [ ] 帶疱疫苗與失智（Rayens 2026）回核\n- [ ] 補睡眠章證據\n\n## 風險／卡點\n- 部分新研究僅觀察性，需多源交叉再採用。"}, {"id": "P-03", "name": "戰情室儀錶板", "owner": "engineer", "collaborators": ["director"], "status": "in_progress", "progress": 40, "priority": "med", "start": "2026-06-25", "due": "2026-07-10", "kpi": [], "body": "## 目標\n一人公司的全員戰情儀錶板：KPI、專案、員工狀態、開會記錄一頁看完。\n\n## 里程碑\n- [x] 會動的 demo（L1）\n- [x] 改為 .md → 產生器 → 靜態快照（L0）\n- [ ] 換成真實員工／專案／KPI\n- [ ] （日後）半自動即時：agent 自己回報狀態\n\n## 風險／卡點\n- 真正關鍵不在程式，在每週是否持續餵入真實狀況。"}, {"id": "P-02", "name": "9S 養生書籍初稿", "owner": "editor", "collaborators": ["director", "research"], "status": "in_progress", "progress": 32, "priority": "med", "start": "2026-06-01", "due": "2026-09-15", "kpi": [], "body": "## 目標\n以 9S 為骨、證據為肉，寫出一本可出版的長壽養生書初稿。\n\n## 里程碑\n- [x] 全書章節大綱\n- [ ] S1–S3 初稿\n- [ ] S4–S6 初稿\n- [ ] S7–S9 初稿\n\n## 風險／卡點\n- 語氣層由誰定尚未拍板；目前先聚焦內容與證據。"}, {"id": "P-05", "name": "品牌視覺改版", "owner": "designer", "collaborators": [], "status": "planned", "progress": 5, "priority": "low", "start": "2026-07-15", "due": "2026-08-20", "kpi": [], "body": "## 目標\n統一 9S 圖卡、書籍封面、社群視覺的調性（navy + gold）。\n\n## 里程碑\n- [ ] 訂主視覺與色票\n- [ ] 9S 九宮格圖\n- [ ] 書籍封面草稿\n\n## 風險／卡點\n- 排在書籍初稿之後，避免分散心力。"}], "kpis": [{"id": "K-evidence-year", "name": "年度查核文獻", "scope": "annual", "period": "2026", "current": 24.0, "target": 60.0, "unit": "篇", "owner": "research"}, {"id": "K-topic-year", "name": "年度臨床主題", "scope": "annual", "period": "2026", "current": 7.0, "target": 12.0, "unit": "篇", "owner": "editor"}, {"id": "K-evidence-jun", "name": "本月查核文獻", "scope": "monthly", "period": "2026-06", "current": 5.0, "target": 8.0, "unit": "篇", "owner": "research"}, {"id": "K-meeting-jun", "name": "本月週會場次", "scope": "monthly", "period": "2026-06", "current": 3.0, "target": 4.0, "unit": "場", "owner": "secretary"}], "meetings": [{"id": "M-0620", "title": "六月證據庫週會", "date": "2026-06-20", "attendees": ["director", "research", "editor"], "projects": ["P-04", "P-01"], "tag": "週會", "recording": "", "body": "## 議程\n- 上週查核進度回顧\n- Rayens 2026 帶疱疫苗與失智 數字確認\n- 下週優先序\n\n## 決議\n- P-04 升到 review，院長本週內定稿\n- 新增 SGLT2i 衰弱證據到 S4\n\n## 待辦\n- 研究查核員：補 Rayens 全文 DOI\n- 主編：S4 章接上新證據連結"}, {"id": "M-0613", "title": "9S 書籍架構會", "date": "2026-06-13", "attendees": ["director", "editor"], "projects": ["P-02"], "tag": "策略", "recording": "", "body": "## 議程\n- 全書章節大綱\n- 每章對應證據盤點\n- 語氣層由誰定\n\n## 決議\n- 書籍採 9S 為骨、證據為肉\n- 語氣／人格層不進知識庫，輸出時各自設定\n\n## 待辦\n- 主編：交 S1–S3 初稿\n- 院長：審定核心哲學那段"}, {"id": "M-0606", "title": "六月月度策略會", "date": "2026-06-06", "attendees": ["director", "research", "editor", "engineer", "designer"], "projects": ["P-03"], "tag": "月會", "recording": "", "body": "## 議程\n- 五月成果回顧\n- 六月 KPI 設定\n- 戰情室要不要做\n\n## 決議\n- 六月查核目標 8 篇、週會 4 場\n- 拍板做戰情室儀錶板（P-03），先做會動的 demo\n\n## 待辦\n- 產出工程師：先做會動的 demo\n- 全員：各自每週回報進度"}], "generated_at": "2026/06/25 14:07"};
+const DATA = __DATA__;
 const EMP = Object.fromEntries(DATA.employees.map(e=>[e.id,e]));
 const STATE_LABEL = {working:"工作中",meeting:"開會中",review:"待審",blocked:"卡住",idle:"待命",offline:"離線"};
 const STATUS_TEXT = {in_progress:"進行中",review:"待審核",blocked:"卡住",done:"完成",planned:"規劃中"};
@@ -212,4 +303,9 @@ document.querySelectorAll("#projects .pcard").forEach(el=>el.onclick=()=>{
   document.getElementById("mask").classList.add("on");
 });
 renderMeetings();
-</script></body></html>
+</script></body></html>"""
+
+html = TMPL.replace("__DATA__", DATA)
+open(OUT, "w", encoding="utf-8").write(html)
+print("戰情室 HTML OK:", len(employees), "員工 /", len(projects), "專案 /",
+      len(kpis), "KPI /", len(meetings), "會議")

@@ -31,7 +31,8 @@ def parse_fm(text):
     return fm, body
 
 notes=[]
-for dp,_,files in os.walk(ROOT):
+for dp,dns,files in os.walk(ROOT):
+    dns[:] = [d for d in dns if d != "戰情室"]   # 戰情室自成一套產生器，不混入醫學知識庫
     for fn in files:
         if not fn.endswith(".md"): continue
         rel=os.path.relpath(os.path.join(dp,fn),ROOT); folder=os.path.dirname(rel) or "."
