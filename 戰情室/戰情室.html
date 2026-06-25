@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>叮噹戰情室 · 一人公司儀錶板</title>
+<style>
+:root{--navy:#1E2761;--gold:#C5993A;--cream:#F5F0E8;--ink:#23262e;--line:#e3dccb;--paper:#fbf8f1;--muted:#8a8675;
+--green:#3f8f5b;--amber:#C5993A;--red:#b3340f;--blue:#3a4488;
+--serif:"Noto Serif TC","Songti TC",Georgia,serif;--sans:"PingFang TC","Noto Sans TC","Microsoft JhengHei",-apple-system,sans-serif;}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--cream);color:var(--ink);font-family:var(--sans);min-height:100vh}
+header{background:var(--navy);color:#fff;padding:13px 24px;display:flex;align-items:center;gap:16px;border-bottom:3px solid var(--gold);position:sticky;top:0;z-index:20}
+header h1{font-family:var(--serif);font-size:19px;margin:0;letter-spacing:.05em;font-weight:600}
+header .sub{color:#c9cbe0;font-size:11.5px;letter-spacing:.05em}
+header .live{margin-left:auto;display:flex;align-items:center;gap:18px}
+.livedot{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:#c9cbe0;letter-spacing:.06em}
+.livedot i{width:8px;height:8px;border-radius:50%;background:#5fd08a;box-shadow:0 0 0 0 rgba(95,208,138,.7);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,208,138,.6)}70%{box-shadow:0 0 0 7px rgba(95,208,138,0)}100%{box-shadow:0 0 0 0 rgba(95,208,138,0)}}
+.clock{font-family:var(--serif);font-size:16px;color:var(--gold);font-variant-numeric:tabular-nums}
+.clock small{display:block;font-size:10px;color:#b9bcd4;letter-spacing:.1em;font-family:var(--sans)}
+main{max-width:1280px;margin:0 auto;padding:20px 22px 60px}
+.sect{margin:22px 2px 11px;font-family:var(--serif);font-size:15px;color:var(--navy);display:flex;align-items:center;gap:9px}
+.sect:before{content:"";width:4px;height:16px;background:var(--gold);border-radius:2px}
+.sect .more{margin-left:auto;font-family:var(--sans);font-size:11px;color:var(--muted)}
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:13px;padding:15px 16px;position:relative;overflow:hidden}
+.kpi .scope{font-size:10.5px;letter-spacing:.1em;color:var(--muted);font-weight:600}
+.kpi .scope.annual{color:var(--blue)}.kpi .scope.monthly{color:var(--gold)}
+.kpi .name{font-size:13px;color:#444;margin:3px 0 9px;font-weight:600}
+.kpi .big{font-family:var(--serif);font-size:27px;color:var(--navy);line-height:1}
+.kpi .big small{font-size:13px;color:var(--muted);font-family:var(--sans)}
+.kpi .bar{height:7px;border-radius:5px;background:#efe9da;margin:10px 0 6px;overflow:hidden}
+.kpi .bar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--gold),#dcb45e);transition:width .8s}
+.kpi.ok .bar i{background:linear-gradient(90deg,var(--green),#6fb98a)}
+.kpi.risk .bar i{background:linear-gradient(90deg,#d98a3a,#e6b56a)}
+.kpi.behind .bar i{background:linear-gradient(90deg,var(--red),#d9694f)}
+.kpi .foot{font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
+.kpi .tag{font-weight:600}
+.kpi.ok .tag{color:var(--green)}.kpi.risk .tag{color:#b07d1f}.kpi.behind .tag{color:var(--red)}
+/* two col */
+.cols{display:grid;grid-template-columns:1.45fr 1fr;gap:22px;align-items:start}
+/* projects */
+.pcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:11px;transition:.15s}
+.pcard:hover{border-color:var(--gold);box-shadow:0 3px 14px rgba(30,39,97,.06)}
+.pcard .top{display:flex;align-items:center;gap:10px}
+.pcard .pname{font-family:var(--serif);font-size:15px;color:var(--navy);font-weight:600}
+.pcard .pid{font-size:10px;color:var(--muted);letter-spacing:.05em}
+.st{margin-left:auto;font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.st.in_progress{background:#e7ebf7;color:var(--blue)}
+.st.review{background:#f6ecd6;color:#956c19}
+.st.blocked{background:#fbe3dc;color:var(--red)}
+.st.done{background:#e4f0e8;color:var(--green)}
+.st.planned{background:#eee9dd;color:var(--muted)}
+.pcard .pbar{height:9px;border-radius:6px;background:#efe9da;margin:11px 0 7px;overflow:hidden}
+.pcard .pbar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--navy),#3a4488);transition:width 1s}
+.pcard .pmeta{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--muted)}
+.owner{display:inline-flex;align-items:center;gap:6px;color:#444;font-weight:600}
+.av{width:22px;height:22px;border-radius:50%;background:var(--paper);border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+.pct{margin-left:auto;font-family:var(--serif);color:var(--navy);font-weight:700;font-size:14px}
+.due.soon{color:#b07d1f;font-weight:600}.due.over{color:var(--red);font-weight:600}
+/* agents live */
+.agents{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px 4px}
+.arow{display:flex;align-items:center;gap:11px;padding:11px 13px;border-bottom:1px solid #f1ecdd}
+.arow:last-child{border-bottom:none}
+.arow .av{width:34px;height:34px;font-size:18px;position:relative;flex:0 0 auto}
+.sdot{position:absolute;right:-2px;bottom:-2px;width:11px;height:11px;border-radius:50%;border:2px solid #fff}
+.sdot.working{background:var(--green);animation:blink 1.4s infinite}
+.sdot.meeting{background:var(--blue)}
+.sdot.review{background:var(--gold)}
+.sdot.blocked{background:var(--red)}
+.sdot.idle{background:#c4bca6}
+.sdot.offline{background:#c4bca6}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+.arow .who{font-size:13.5px;color:var(--navy);font-weight:600}
+.arow .role{font-size:10.5px;color:var(--muted)}
+.arow .task{font-size:12px;color:#555;margin-top:2px;line-height:1.4}
+.arow .task b{color:var(--navy);font-weight:600}
+.arow .rt{margin-left:auto;text-align:right;flex:0 0 auto}
+.statelab{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px}
+.statelab.working{background:#e4f0e8;color:var(--green)}
+.statelab.meeting{background:#e7ebf7;color:var(--blue)}
+.statelab.review{background:#f6ecd6;color:#956c19}
+.statelab.blocked{background:#fbe3dc;color:var(--red)}
+.statelab.idle{background:#eee9dd;color:var(--muted)}
+.arow .since{font-size:10.5px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+/* meetings */
+.msearch{display:flex;gap:9px;margin-bottom:11px}
+.msearch input{flex:1;padding:10px 13px;border:1px solid var(--line);border-radius:9px;background:#fff;font-family:var(--sans);font-size:13.5px;color:var(--ink)}
+.msearch input:focus{outline:none;border-color:var(--gold)}
+.mlist{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.mcard{background:#fff;border:1px solid var(--line);border-radius:11px;padding:12px 14px;cursor:pointer;transition:.15s}
+.mcard:hover{border-color:var(--gold);background:var(--paper)}
+.mcard .md{font-size:10.5px;color:var(--gold);font-weight:700;letter-spacing:.05em}
+.mcard .mt{font-family:var(--serif);font-size:14px;color:var(--navy);font-weight:600;margin:4px 0 6px}
+.mcard .matt{font-size:11px;color:var(--muted);line-height:1.5}
+.mcard .mtag{display:inline-block;margin-top:7px;font-size:10px;background:var(--paper);border:1px solid var(--line);color:#7a7560;padding:1px 8px;border-radius:12px}
+/* modal */
+.mask{position:fixed;inset:0;background:rgba(30,39,97,.4);display:none;align-items:center;justify-content:center;z-index:40;padding:20px}
+.mask.on{display:flex}
+.modal{background:var(--paper);border-radius:15px;max-width:620px;width:100%;max-height:84vh;overflow:auto;border:1px solid var(--line);box-shadow:0 20px 60px rgba(30,39,97,.3)}
+.modal .mh{background:var(--navy);color:#fff;padding:17px 22px;border-radius:15px 15px 0 0;position:sticky;top:0}
+.modal .mh .d{color:var(--gold);font-size:11.5px;font-weight:700;letter-spacing:.06em}
+.modal .mh h3{margin:5px 0 0;font-family:var(--serif);font-size:18px;font-weight:600}
+.modal .mb{padding:18px 24px 26px;font-size:13.5px;line-height:1.75;color:#3a3d44}
+.modal .mb h4{color:var(--navy);font-family:var(--serif);font-size:14.5px;margin:16px 0 6px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.modal .mb ul{margin:6px 0;padding-left:1.3em}.modal .mb li{margin:4px 0}
+.modal .mb .att{font-size:12px;color:var(--muted);margin:2px 0 4px}
+.modal .x{position:absolute;right:16px;top:15px;cursor:pointer;color:#c9cbe0;font-size:20px;line-height:1;background:none;border:none}
+.modal .x:hover{color:#fff}
+.modal a.rec{display:inline-block;margin-top:10px;font-size:12px;color:var(--blue);text-decoration:none;border-bottom:1px solid var(--gold)}
+.toast{position:fixed;right:20px;bottom:20px;background:var(--navy);color:#fff;padding:11px 16px;border-radius:11px;font-size:12.5px;box-shadow:0 8px 28px rgba(30,39,97,.3);opacity:0;transform:translateY(12px);transition:.4s;z-index:50;border-left:3px solid var(--gold);max-width:320px}
+.toast.on{opacity:1;transform:none}
+.note{font-size:11px;color:var(--muted);margin-top:6px}
+@media(max-width:880px){.kpis{grid-template-columns:1fr 1fr}.cols{grid-template-columns:1fr}.mlist{grid-template-columns:1fr}}
+</style></head><body>
+<header>
+  <div><h1>叮噹戰情室</h1><div class="sub">一人公司 · 全員戰情儀錶板</div></div>
+  <div class="live">
+    <span class="livedot"><i></i><span id="src">範例資料 · 模擬即時</span></span>
+    <div class="clock"><span id="t">--:--:--</span><small id="d">載入中</small></div>
+  </div>
+</header>
+<main>
+  <div class="sect">📊 KPI 戰況 <span class="more">年度目標 · 本月目標</span></div>
+  <div class="kpis" id="kpis"></div>
+
+  <div class="cols">
+    <div>
+      <div class="sect">📁 專案進度 <span class="more">含負責人</span></div>
+      <div id="projects"></div>
+    </div>
+    <div>
+      <div class="sect">🟢 員工即時動態 <span class="more">每 3 秒更新</span></div>
+      <div class="agents" id="agents"></div>
+      <div class="note">＊ 此區資料來自 <code>即時狀態.json</code>；本 demo 未連到檔案時以模擬資料跳動，證明版面會動。</div>
+    </div>
+  </div>
+
+  <div class="sect">🗒️ 開會記錄 · 快速調閱 <span class="more">點卡片看全文</span></div>
+  <div class="msearch"><input id="msearch" placeholder="搜尋會議標題、與會者、決議關鍵字…（例如：肌力、週會、品牌）"></div>
+  <div class="mlist" id="meetings"></div>
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== 範例資料（之後由 .md / JSON 餵入） ===================== */
+const EMPLOYEES = [
+  {id:"director",  name:"院長（你）", role:"決策・最終拍板", avatar:"🧑‍⚕️", kind:"human"},
+  {id:"research",  name:"研究查核員", role:"文獻查核・證據分級", avatar:"🔬", kind:"agent"},
+  {id:"editor",    name:"主編",       role:"內容撰寫・9S 連結", avatar:"✍️", kind:"agent"},
+  {id:"engineer",  name:"產出工程師", role:"跑產生器・部署上線", avatar:"⚙️", kind:"agent"},
+  {id:"designer",  name:"品牌設計",   role:"視覺・Canva 出圖",  avatar:"🎨", kind:"agent"},
+  {id:"secretary", name:"行政祕書",   role:"排程・信件・會議",  avatar:"🗂️", kind:"agent"},
+];
+const EMP = Object.fromEntries(EMPLOYEES.map(e=>[e.id,e]));
+
+const KPIS = [
+  {scope:"annual",  name:"年度查核文獻",  current:24, target:60, unit:"篇"},
+  {scope:"annual",  name:"年度臨床主題",  current:7,  target:12, unit:"篇"},
+  {scope:"monthly", name:"本月查核文獻",  current:5,  target:8,  unit:"篇"},
+  {scope:"monthly", name:"本月週會場次",  current:3,  target:4,  unit:"場"},
+];
+
+const PROJECTS = [
+  {id:"P-01", name:"老年醫學證據庫擴充", owner:"research", status:"in_progress", progress:65, due:"2026-07-31"},
+  {id:"P-04", name:"帶疱疫苗與失智專題", owner:"research", status:"review",      progress:80, due:"2026-06-30"},
+  {id:"P-02", name:"9S 養生書籍初稿",   owner:"editor",   status:"in_progress", progress:32, due:"2026-09-15"},
+  {id:"P-03", name:"戰情室儀錶板",       owner:"engineer", status:"in_progress", progress:15, due:"2026-07-10"},
+  {id:"P-05", name:"品牌視覺改版",       owner:"designer", status:"planned",     progress:5,  due:"2026-08-20"},
+];
+
+const MEETINGS = [
+  {id:"M-0620", date:"2026-06-20", title:"六月證據庫週會", attendees:["director","research","editor"],
+   tag:"週會", recording:"#",
+   agenda:["上週查核進度回顧","Rayens 2026 帶疱疫苗與失智 數字確認","下週優先序"],
+   decisions:["P-04 升到 review，院長本週內定稿","新增 SGLT2i 衰弱證據到 S4"],
+   actions:["研究查核員：補 Rayens 全文 DOI","主編：S4 章接上新證據連結"]},
+  {id:"M-0613", date:"2026-06-13", title:"9S 書籍架構會", attendees:["director","editor"],
+   tag:"策略", recording:"#",
+   agenda:["全書章節大綱","每章對應證據盤點","語氣層由誰定"],
+   decisions:["書籍採 9S 為骨、證據為肉","語氣/人格層不進知識庫，輸出時各自設定"],
+   actions:["主編：交 S1–S3 初稿","院長：審定核心哲學那段"]},
+  {id:"M-0606", date:"2026-06-06", title:"六月月度策略會", attendees:["director","research","editor","engineer","designer"],
+   tag:"月會", recording:"#",
+   agenda:["五月成果","六月 KPI 設定","戰情室要不要做"],
+   decisions:["六月查核目標 8 篇","拍板做戰情室儀錶板（P-03）"],
+   actions:["產出工程師：先做會動的 demo","全員：各自回報每週進度"]},
+];
+
+/* live 狀態：之後由 即時狀態.json 覆蓋 */
+let LIVE = {
+  director:  {state:"idle",    task:"審書籍核心哲學段落",  since:Date.now()-1000*60*40},
+  research:  {state:"working", task:"查核 <b>Rayens 2026</b> 帶疱疫苗與失智", since:Date.now()-1000*60*22},
+  editor:    {state:"working", task:"撰寫 <b>S4 肌力章</b>（厚積薄發）", since:Date.now()-1000*60*8},
+  engineer:  {state:"working", task:"搭建<b>戰情室儀錶板</b>", since:Date.now()-1000*60*3},
+  designer:  {state:"idle",    task:"等品牌改版啟動", since:Date.now()-1000*60*120},
+  secretary: {state:"meeting", task:"安排下週週會、寄出議程", since:Date.now()-1000*60*15},
+};
+const STATE_LABEL = {working:"工作中",meeting:"開會中",review:"待審",blocked:"卡住",idle:"待命",offline:"離線"};
+
+/* ===================== 渲染 ===================== */
+function kpiClass(p){return p>=0.9?"ok":p>=0.6?"risk":"behind"}
+function kpiTag(p){return p>=0.9?"超前/達標":p>=0.6?"進行中":"落後"}
+function renderKpis(){
+  document.getElementById("kpis").innerHTML = KPIS.map(k=>{
+    const p=Math.min(1,k.current/k.target), c=kpiClass(p);
+    return `<div class="kpi ${c}">
+      <div class="scope ${k.scope}">${k.scope==="annual"?"年度 KPI":"本月 KPI"}</div>
+      <div class="name">${k.name}</div>
+      <div class="big">${k.current}<small> / ${k.target} ${k.unit}</small></div>
+      <div class="bar"><i style="width:${(p*100).toFixed(0)}%"></i></div>
+      <div class="foot"><span>${(p*100).toFixed(0)}%</span><span class="tag">${kpiTag(p)}</span></div>
+    </div>`;
+  }).join("");
+}
+function dueClass(d){const days=(new Date(d)-new Date())/86400000;return days<0?"over":days<10?"soon":""}
+function renderProjects(){
+  document.getElementById("projects").innerHTML = PROJECTS.map(p=>{
+    const o=EMP[p.owner]||{name:p.owner,avatar:"❓"};
+    const stext={in_progress:"進行中",review:"待審核",blocked:"卡住",done:"完成",planned:"規劃中"}[p.status]||p.status;
+    return `<div class="pcard">
+      <div class="top"><div><span class="pname">${p.name}</span> <span class="pid">${p.id}</span></div>
+        <span class="st ${p.status}">${stext}</span></div>
+      <div class="pbar"><i style="width:${p.progress}%"></i></div>
+      <div class="pmeta">
+        <span class="owner"><span class="av">${o.avatar}</span>${o.name}</span>
+        <span class="due ${dueClass(p.due)}">截止 ${p.due}</span>
+        <span class="pct">${p.progress}%</span>
+      </div></div>`;
+  }).join("");
+}
+function ago(ts){const s=Math.floor((Date.now()-ts)/1000);
+  if(s<60)return s+" 秒前";const m=Math.floor(s/60);if(m<60)return m+" 分鐘前";
+  const h=Math.floor(m/60);return h+" 小時前";}
+function renderAgents(){
+  document.getElementById("agents").innerHTML = EMPLOYEES.map(e=>{
+    const l=LIVE[e.id]||{state:"offline",task:"—",since:Date.now()};
+    return `<div class="arow">
+      <span class="av">${e.avatar}<span class="sdot ${l.state}"></span></span>
+      <div style="flex:1;min-width:0">
+        <div class="who">${e.name} <span class="role">· ${e.role}</span></div>
+        <div class="task">${l.task||"—"}</div>
+        <div class="since">活躍 ${ago(l.since)}</div>
+      </div>
+      <div class="rt"><span class="statelab ${l.state}">${STATE_LABEL[l.state]||l.state}</span></div>
+    </div>`;
+  }).join("");
+}
+function renderMeetings(q=""){
+  q=q.trim().toLowerCase();
+  const list=MEETINGS.filter(m=>!q || (m.title+m.tag+m.attendees.map(a=>(EMP[a]||{}).name||a).join("")+
+      m.decisions.join("")+m.agenda.join("")+m.actions.join("")).toLowerCase().includes(q));
+  const box=document.getElementById("meetings");
+  if(!list.length){box.innerHTML=`<div class="note">找不到符合「${q}」的會議記錄。</div>`;return;}
+  box.innerHTML=list.map(m=>{
+    const att=m.attendees.map(a=>(EMP[a]||{}).name||a).join("、");
+    return `<div class="mcard" data-id="${m.id}">
+      <div class="md">${m.date}</div>
+      <div class="mt">${m.title}</div>
+      <div class="matt">與會：${att}</div>
+      <div class="mtag">#${m.tag}</div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll(".mcard").forEach(el=>el.onclick=()=>openMeeting(el.dataset.id));
+}
+function openMeeting(id){
+  const m=MEETINGS.find(x=>x.id===id);if(!m)return;
+  const att=m.attendees.map(a=>(EMP[a]||{}).name||a).join("、");
+  const li=arr=>arr.map(x=>`<li>${x}</li>`).join("");
+  document.getElementById("modal").innerHTML=`
+    <div class="mh"><button class="x" onclick="closeModal()">×</button>
+      <div class="d">${m.date} · #${m.tag}</div><h3>${m.title}</h3></div>
+    <div class="mb">
+      <div class="att">與會：${att}</div>
+      <h4>議程</h4><ul>${li(m.agenda)}</ul>
+      <h4>決議</h4><ul>${li(m.decisions)}</ul>
+      <h4>待辦</h4><ul>${li(m.actions)}</ul>
+      <a class="rec" href="${m.recording}" onclick="return false">▶ 調閱錄影／逐字稿（之後接 Zoom）</a>
+    </div>`;
+  document.getElementById("mask").classList.add("on");
+}
+function closeModal(){document.getElementById("mask").classList.remove("on")}
+document.getElementById("mask").onclick=e=>{if(e.target.id==="mask")closeModal()};
+document.getElementById("msearch").oninput=e=>renderMeetings(e.target.value);
+
+/* ===================== 時鐘 ===================== */
+function tick(){
+  const n=new Date();
+  const p=x=>String(x).padStart(2,"0");
+  document.getElementById("t").textContent=`${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+  const wd=["日","一","二","三","四","五","六"][n.getDay()];
+  document.getElementById("d").textContent=`${n.getFullYear()}/${p(n.getMonth()+1)}/${p(n.getDate())} 週${wd}`;
+}
+
+/* ===================== 嘗試讀真實 JSON；讀不到就模擬跳動 ===================== */
+async function pullLive(){
+  try{
+    const r=await fetch("即時狀態.json",{cache:"no-store"});
+    if(r.ok){const j=await r.json();
+      if(j.agents){j.agents.forEach(a=>{LIVE[a.emp_id]={state:a.state,task:a.task,since:new Date(a.since).getTime()};});}
+      document.getElementById("src").textContent="即時狀態.json · 已連線";
+      document.querySelector(".livedot i").style.background="#5fd08a";
+      renderAgents();return true;}
+  }catch(e){}
+  return false;
+}
+const TASK_POOL={
+  research:["核對 <b>AWGS 2025</b> 肌少症切點","查 <b>Lu 2026</b> 華人肌肉量常模","比對 <b>CALERIE</b> 生物老化數字"],
+  editor:["潤飾 <b>S2 睡眠章</b>","補 <b>S8 社交</b> 的證據連結","整理三大健康斷崖段落"],
+  engineer:["重跑 <b>產生HTML.py</b>","部署到 GitHub Pages","接 <b>即時狀態.json</b> 來源"],
+  designer:["畫 9S 九宮格圖","調整品牌主色","出書籍封面草稿"],
+  secretary:["寄出週會議程","同步 Google 行事曆","整理上週逐字稿"],
+};
+function simulate(){
+  // 隨機讓一位 agent 切換任務／狀態，讓畫面看得出在動
+  const ids=Object.keys(TASK_POOL);
+  const id=ids[Math.floor(Math.random()*ids.length)];
+  const r=Math.random();
+  if(r<0.45 && TASK_POOL[id]){
+    const pool=TASK_POOL[id];const t=pool[Math.floor(Math.random()*pool.length)];
+    LIVE[id]={state:"working",task:t,since:Date.now()};
+    toast(`${EMP[id].name} 開始：${t.replace(/<[^>]+>/g,"")}`);
+  }else if(r<0.6){
+    LIVE[id]={state:"idle",task:"工作告一段落，待命中",since:Date.now()};
+    toast(`${EMP[id].name} 完成一項任務，進入待命`);
+  }
+  renderAgents();
+}
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById("toast");t.textContent="🔔 "+msg;t.classList.add("on");
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("on"),3200);
+}
+
+/* ===================== 啟動 ===================== */
+renderKpis();renderProjects();renderAgents();renderMeetings();
+tick();setInterval(tick,1000);
+setInterval(()=>renderAgents(),5000);      // 刷新「X 分鐘前」
+(async()=>{
+  const connected=await pullLive();
+  if(connected){ setInterval(pullLive,4000); }   // 真實資料：每 4 秒輪詢
+  else{ setInterval(simulate,3000); }            // 沒接到：模擬跳動
+})();
+</script>
+</body></html>
