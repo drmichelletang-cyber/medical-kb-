@@ -5,6 +5,8 @@ ROOT = os.path.dirname(_HERE)   # vault 根目錄 = _tools 的上一層
 OUT  = os.path.join(ROOT, "叮噹長壽知識庫_瀏覽器.html")
 # GitHub Pages 根網址只認 index.html，故同時輸出一份同內容的 index.html
 OUT_INDEX = os.path.join(ROOT, "index.html")
+# 機器可讀的 KB 快照，供對話框後端（Supabase Edge Function）當 context 來源
+OUT_JSON = os.path.join(ROOT, "notes.json")
 
 def parse_fm(text):
     fm, body = {}, text
@@ -224,4 +226,5 @@ buildNav(); renderHub();
 html = TMPL.replace("__DATA__",data)
 open(OUT,"w",encoding="utf-8").write(html)
 open(OUT_INDEX,"w",encoding="utf-8").write(html)
-print("HTML OK,", len(notes), "notes (+ index.html)")
+open(OUT_JSON,"w",encoding="utf-8").write(data)
+print("HTML OK,", len(notes), "notes (+ index.html + notes.json)")

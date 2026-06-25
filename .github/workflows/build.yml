@@ -1,0 +1,44 @@
+name: 重生知識庫 HTML
+
+# 任何 .md 變動（含對話框後端 commit 的新筆記）都自動重生 index.html / notes.json，
+# 讓 GitHub Pages 與 /medical 上的檢視器即時反映最新內容。
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "**/*.md"
+      - "_tools/產生HTML.py"
+      - ".github/workflows/build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: 產生 HTML 與 notes.json
+        run: python3 _tools/產生HTML.py
+
+      - name: Commit 重生產物（若有變動）
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain 'index.html' '叮噹長壽知識庫_瀏覽器.html' 'notes.json')" ]; then
+            git add 'index.html' '叮噹長壽知識庫_瀏覽器.html' 'notes.json'
+            git commit -m "chore: 自動重生 HTML / notes.json [skip ci]"
+            git push
+          else
+            echo "產物無變動，略過 commit。"
+          fi
